@@ -1,39 +1,12 @@
-import socket, threading, os
+import kivy
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.uix.textinput import TextInput
-from kivy.uix.button import Button
-from kivy.uix.scrollview import ScrollView
-from kivy.clock import Clock
-from kivy.core.text import LabelBase
-from kivy.graphics import Color, RoundedRectangle
-
-# --- معالجة اللغة العربية ---
-try:
-    from arabic_reshaper import reshape
-    from bidi.algorithm import get_display
-    def fix_arabic(text):
-        if not text: return ""
-        return get_display(reshape(text))
-except Exception:
-    def fix_arabic(text): return text[::-1] if text else ""
-
-# تسجيل الخط (تأكد من وجود ملف myfont.ttf في GitHub)
-FONT_AVAILABLE = os.path.exists("myfont.ttf")
-if FONT_AVAILABLE:
-    LabelBase.register(name="ArabicFont", fn_regular="myfont.ttf")
-FONT_NAME = "ArabicFont" if FONT_AVAILABLE else "Roboto"
-
-# --- كلاس فقاعة الدردشة ---
-class ChatBubble(BoxLayout):
-    def __init__(self, text, sender, **kwargs):
-        super().__init__(orientation='vertical', size_hint_y=None, padding=(10, 5), **kwargs)
-        
-        is_me = (sender == "أنا")
-        halign = 'right' if is_me else 'left'
-        # أخضر واتساب لرسائلي، أبيض للطرف الآخر
-        bg_color = (0.85, 0.96, 0.76, 1) if is_me else (1, 1, 1, 1)
+# لاحظ: لا تضع socket أو threading في الـ requirements بملف spec
+# بل استدعها هنا في الكود فقط
+import socket
+import threading
+import json
+# ... باقي الكود حق التصميم ...
         self.pos_hint = {'right': 0.98} if is_me else {'left': 0.02}
         self.size_hint_x = 0.75
 
