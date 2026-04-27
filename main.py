@@ -10,8 +10,10 @@ from kivy.core.window import Window
 from kivy.utils import get_color_from_hex
 from arabic_reshaper import reshape
 from bidi.algorithm import get_display
+import socket
+import threading
 
-# إعداد لون الخلفية (رمادي فاتح مثل الواتساب)
+# خلفية الواتساب الشهيرة
 Window.clearcolor = get_color_from_hex('#e5ddd5')
 
 class ChatBubble(BoxLayout):
@@ -21,19 +23,79 @@ class ChatBubble(BoxLayout):
         self.padding = [10, 5]
         self.size_hint_y = None
         
-        # تنسيق النص العربي
+        # معالجة النص العربي
         reshaped_text = reshape(text)
         bidi_text = get_display(reshaped_text)
         
-        # إنشاء الفقاعة
         lbl = Label(
             text=bidi_text,
-            font_name='myfont.ttf', # تأكد من وجود ملف الخط
+            font_name='myfont.ttf', # تأكد من رفع ملف الخط
             font_size='16sp',
             color=[0, 0, 0, 1],
             size_hint=(None, None),
-            padding=(15, 10),
-            halign='right'
+            padding=(15, 10)
+        )
+        lbl.bind(texture_size=lbl.setter('size'))
+        self.add_widget(lbl)
+        
+        with self.canvas.before:
+            if is_user:
+                Color(rgb=get_color_from_hex('#dcf8c6')) # أخضر واتساب
+                self.pos_hint = {'right': 1}
+            else:
+                Color(rgb=(1, 1, 1, 1)) # أبيض
+                self.pos_hint = {'left': 1}
+            
+            self.rect = RoundedRectangle(radius=[(10, 10)])
+            self.bind(pos=self._update_rect, size=self._update_rect)
+
+    def _update_rect(self, instance, value):
+        self.rect.pos = self.pos
+        self.rect.size = self.size
+
+class WhatsAppStyleApp(App):
+    def build(self):
+        root = BoxLayout(orientation='vertical')
+        
+        # الهيدر (أخضر واتساب)
+        header = BoxLayout(size_hint_y=0.1, padding=10)
+        with header.canvas.before:
+            Color(rgb=get_color_from_hex('#075e54'))
+            self.h_rect = RoundedRectangle()
+            header.bind(pos=lambda obj, pos: setattr(self.h_rect, 'pos', pos),
+                        size=lambda obj, size: setattr(self.h_rect, 'size', size))
+        
+        header.add_widget(Label(text="ByWhats", font_size='22sp', bold=True, color=(1,1,1,1)))
+        root.add_widget(header)
+        
+        # منطقة الدردشة
+        self.chat_layout = BoxLayout(orientation='vertical', size_hint_y=0.8, padding=10, spacing=10)
+        self.chat_layout.bind(minimum_height=self.chat_layout.setter('height'))
+        
+        scroll = ScrollView()
+        scroll.add_widget(self.chat_layout)
+        root.add_widget(scroll)
+        
+        # منطقة الإدخال
+        input_area = BoxLayout(size_hint_y=0.1, padding=5, spacing=5)
+        self.msg_input = TextInput(hint_text="اكتب رسالة...", font_name='myfont.ttf', multiline=False, size_hint_x=0.8)
+        
+        send_btn = Button(text="إرسال", font_name='myfont.ttf', size_hint_x=0.2, background_color=get_color_from_hex('#128c7e'))
+        send_btn.bind(on_release=self.send_message)
+        
+        input_area.add_widget(self.msg_input)
+        input_area.add_widget(send_btn)
+        root.add_widget(input_area)
+        
+        return root
+
+    def send_message(self, instance):
+        if self.msg_input.text.strip():
+            self.chat_layout.add_widget(ChatBubble(text=self.msg_input.text, is_user=True))
+            self.msg_input.text = ""
+
+if __name__ == '__main__':
+    WhatsAppStyleApp().run()
         )
         lbl.bind(texture_size=lbl.setter('size'))
         
