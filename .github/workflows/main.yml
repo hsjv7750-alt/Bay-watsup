@@ -24,7 +24,7 @@ jobs:
         timeout-minutes: 90
         run: |
           export APP_ANDROID_ACCEPT_SDK_LICENSE=1
-          buildozer android clean
+          # شلنا أمر clean عشان ما يضرب لو الملفات مش موجودة
           buildozer -v android debug
         env:
           USER: runner
