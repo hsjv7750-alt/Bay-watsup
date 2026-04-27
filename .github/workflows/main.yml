@@ -1,34 +1,35 @@
 name: Build Android APK
-on: [push]
+on: [push, workflow_dispatch]
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # هذا سيجعل GitHub يجد سيرفر فوراً
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install System Dependencies
+      - name: Install Dependencies
         run: |
           sudo apt update
-          sudo apt install -y python3-pip build-essential git python3-setuptools \
-          libffi-dev libssl-dev libltdl-dev zlib1g-dev openjdk-17-jdk \
-          autoconf automake libtool pkg-config cmake zip unzip
+          sudo apt install -y build-essential git python3-dev python3-pip zip unzip \
+          openjdk-17-jdk libssl-dev libffi-dev libltdl-dev zlib1g-dev \
+          autoconf automake libtool pkg-config cmake
 
-      - name: Install Buildozer and Cython
+      - name: Install Buildozer & Cython
         run: |
-          python3 -m pip install --upgrade pip
-          # إجبار النظام على استخدام نسخة Cython المتوافقة لتجنب الخطأ السابق
-          python3 -m pip install --user --upgrade buildozer "cython<3.0" --break-system-packages || python3 -m pip install --user --upgrade buildozer "cython<3.0"
+          python3 -m pip install --user --upgrade "buildozer" "cython<3.0" --break-system-packages || python3 -m pip install --user --upgrade "buildozer" "cython<3.0"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Build APK with Buildozer
+      - name: Build with Buildozer
         run: |
-          yes | buildozer android debug
+          # مسح شامل لأي محاولة سابقة فاشلة
+          rm -rf .buildozer
+          # تنفيذ الأمر مع عرض التفاصيل (log_level 2) لرؤية أين يتوقف بالضبط
+          yes | buildozer -v android debug
         env:
           USER: root
 
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ByWhats-WhatsApp-Style
+          name: WhatsApp-Style-App
           path: bin/*.apk
