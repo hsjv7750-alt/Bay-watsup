@@ -14,11 +14,11 @@ jobs:
           libffi-dev libssl-dev libltdl-dev zlib1g-dev openjdk-17-jdk \
           autoconf automake libtool pkg-config cmake
 
-      - name: Install Buildozer
+      - name: Install Buildozer and Cython
         run: |
-          # تحديث pip أولاً ليدعم كل الخيارات الجديدة
           python3 -m pip install --upgrade pip
-          python3 -m pip install --user --upgrade buildozer --break-system-packages || python3 -m pip install --user --upgrade buildozer
+          # أضفنا Cython هنا لأنه هو اللي موقفنا الآن
+          python3 -m pip install --user --upgrade buildozer cython==0.29.33 --break-system-packages || python3 -m pip install --user --upgrade buildozer cython==0.29.33
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Build APK with Buildozer
