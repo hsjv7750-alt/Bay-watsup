@@ -1,33 +1,19 @@
-name: Build Android APK
-on:
-  push:
-    branches: [ main ]
+name: Build APK
+on: [push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
         with:
-          node-version: 18
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Install Expo CLI
-        run: npm install --global expo-cli
-
-      - name: Build APK (Preview)
-        run: npx eas build --platform android --profile preview --local
-        # ملاحظة: يتطلب هذا وجود ملف eas.json في مشروعك
+          workdir: .
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: my-app-apk
-          path: ./*.apk
-          
+          path: bin/*.apk
