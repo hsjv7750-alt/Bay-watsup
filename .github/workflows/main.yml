@@ -11,6 +11,8 @@ jobs:
         uses: ArtemSBulgakov/buildozer-action@v1
         with:
           workdir: .
+          # هذا السطر هو الحل السحري لمشكلة بايثون 3.12
+          command: pip install --user --upgrade buildozer --break-system-packages && buildozer android debug
         env:
           USER: root
 
