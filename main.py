@@ -1,39 +1,121 @@
 import kivy
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
-# لاحظ: لا تضع socket أو threading في الـ requirements بملف spec
-# بل استدعها هنا في الكود فقط
-import socket
-import threading
-import json
-# ... باقي الكود حق التصميم ...
-        self.pos_hint = {'right': 0.98} if is_me else {'left': 0.02}
-        self.size_hint_x = 0.75
+from kivy.uix.label import Label
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.textinput import TextInput
+from kivy.uix.button import Button
+from kivy.graphics import Color, RoundedRectangle
+from kivy.core.window import Window
+from kivy.utils import get_color_from_hex
+from arabic_reshaper import reshape
+from bidi.algorithm import get_display
 
-        lbl = Label(
-            text=fix_arabic(text),
-            font_name=FONT_NAME,
-            color=(0, 0, 0, 1),
-            size_hint_y=None,
-            halign=halign,
-            valign='middle',
-            markup=True
-        )
-        lbl.bind(width=lambda s, w: s.setter('text_size')(s, (w, None)))
-        lbl.bind(texture_size=lambda s, z: s.setter('height')(s, z[1]))
+# إعداد لون الخلفية (رمادي فاتح مثل الواتساب)
+Window.clearcolor = get_color_from_hex('#e5ddd5')
+
+class ChatBubble(BoxLayout):
+    def __init__(self, text, is_user=True, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.padding = [10, 5]
+        self.size_hint_y = None
         
-        with self.canvas.before:
-            Color(*bg_color)
-            self.rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[(15, 15), (15, 15), (15, 15), (15, 15)])
-        self.bind(pos=self.update_rect, size=self.update_rect)
+        # تنسيق النص العربي
+        reshaped_text = reshape(text)
+        bidi_text = get_display(reshaped_text)
+        
+        # إنشاء الفقاعة
+        lbl = Label(
+            text=bidi_text,
+            font_name='myfont.ttf', # تأكد من وجود ملف الخط
+            font_size='16sp',
+            color=[0, 0, 0, 1],
+            size_hint=(None, None),
+            padding=(15, 10),
+            halign='right'
+        )
+        lbl.bind(texture_size=lbl.setter('size'))
         
         self.add_widget(lbl)
-        self.height = lbl.height + 30
+        
+        # تحديد لون ومكان الفقاعة (يمين للمستخدم، يسار للمستلم)
+        with self.canvas.before:
+            if is_user:
+                Color(rgb=get_color_from_hex('#dcf8c6')) # أخضر واتساب
+                self.pos_hint = {'right': 1}
+            else:
+                Color(rgb=(1, 1, 1, 1)) # أبيض
+                self.pos_hint = {'left': 1}
+            
+            self.rect = RoundedRectangle(radius=[(10, 10), (10, 10), (10, 10), (10, 10)])
+            self.bind(pos=self._update_rect, size=self._update_rect)
 
-    def update_rect(self, *args):
+    def _update_rect(self, instance, value):
         self.rect.pos = self.pos
         self.rect.size = self.size
 
+class WhatsAppStyleApp(App):
+    def build(self):
+        # الحاوية الرئيسية
+        root = BoxLayout(orientation='vertical')
+        
+        # 1. الشريط العلوي (Header)
+        header = BoxLayout(size_hint_y=0.1, padding=10)
+        with header.canvas.before:
+            Color(rgb=get_color_from_hex('#075e54')) # أخضر غامق
+            self.rect = RoundedRectangle(pos=header.pos, size=header.size)
+            header.bind(pos=lambda obj, pos: setattr(self.rect, 'pos', pos),
+                        size=lambda obj, size: setattr(self.rect, 'size', size))
+        
+        title = Label(text="ByWhats", font_size='20sp', bold=True, color=(1,1,1,1))
+        header.add_widget(title)
+        root.add_widget(header)
+        
+        # 2. منطقة الرسائل (Chat Area)
+        self.chat_layout = BoxLayout(orientation='vertical', size_hint_y=0.8, padding=10, spacing=10)
+        self.chat_layout.bind(minimum_height=self.chat_layout.setter('height'))
+        
+        scroll = ScrollView(size_hint=(1, 1))
+        scroll.add_widget(self.chat_layout)
+        root.add_widget(scroll)
+        
+        # 3. منطقة الإدخال (Input Area)
+        input_area = BoxLayout(size_hint_y=0.1, padding=5, spacing=5)
+        self.msg_input = TextInput(
+            hint_text="اكتب رسالة...",
+            font_name='myfont.ttf',
+            multiline=False,
+            size_hint_x=0.8,
+            background_normal='',
+            background_color=(1,1,1,1)
+        )
+        
+        send_btn = Button(
+            text="إرسال",
+            font_name='myfont.ttf',
+            size_hint_x=0.2,
+            background_color=get_color_from_hex('#128c7e'),
+            color=(1,1,1,1)
+        )
+        send_btn.bind(on_release=self.send_message)
+        
+        input_area.add_widget(self.msg_input)
+        input_area.add_widget(send_btn)
+        root.add_widget(input_area)
+        
+        return root
+
+    def send_message(self, instance):
+        msg = self.msg_input.text
+        if msg.strip():
+            # إضافة فقاعة المستخدم
+            bubble = ChatBubble(text=msg, is_user=True)
+            self.chat_layout.add_widget(bubble)
+            self.msg_input.text = ""
+
+if __name__ == '__main__':
+    WhatsAppStyleApp().run()
 # --- التطبيق الرئيسي ---
 class ByWhatsApp(App):
     def build(self):
