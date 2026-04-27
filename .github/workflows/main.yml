@@ -17,13 +17,13 @@ jobs:
       - name: Install Buildozer and Cython
         run: |
           python3 -m pip install --upgrade pip
-          # أضفنا Cython هنا لأنه هو اللي موقفنا الآن
           python3 -m pip install --user --upgrade buildozer cython==0.29.33 --break-system-packages || python3 -m pip install --user --upgrade buildozer cython==0.29.33
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Build APK with Buildozer
         run: |
-          buildozer android debug
+          # هذا السطر السحري يوافق على كل رخص أندرويد تلقائياً
+          yes | buildozer android debug
         env:
           USER: root
 
