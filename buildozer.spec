@@ -5,13 +5,17 @@ package.domain = org.test
 source.dir = .
 source.include_exts = py,png,jpg,ttf
 version = 0.1
-# قللنا المتطلبات للأساسيات فقط لضمان السرعة
-requirements = python3,kivy,arabic-reshaper,python-bidi
+
+# المتطلبات الأساسية فقط لضمان عدم التعارض
+requirements = python3,kivy==2.3.0,arabic-reshaper,python-bidi
 
 orientation = portrait
 fullscreen = 0
+
+# بناء لمعمارية واحدة (جوالك) لتسريع العملية ومنع أخطاء الذاكرة
 android.archs = arm64-v8a
 android.api = 31
 android.minapi = 21
 android.skip_update = False
 android.accept_sdk_license = True
+android.permissions = INTERNET,ACCESS_NETWORK_STATE,ACCESS_WIFI_STATE
