@@ -7,33 +7,187 @@ from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.clock import Clock
 from kivy.core.text import LabelBase
+from kivy.graphics import Color, RoundedRectangle
 
+# --- معالجة اللغة العربية ---
 try:
     from arabic_reshaper import reshape
     from bidi.algorithm import get_display
     def fix_arabic(text):
-        if not text:
-            return ""
+        if not text: return ""
         return get_display(reshape(text))
 except Exception:
-    def fix_arabic(text):
-        return text[::-1] if text else ""
+    def fix_arabic(text): return text[::-1] if text else ""
 
+# تسجيل الخط (تأكد من وجود ملف myfont.ttf في GitHub)
 FONT_AVAILABLE = os.path.exists("myfont.ttf")
 if FONT_AVAILABLE:
     LabelBase.register(name="ArabicFont", fn_regular="myfont.ttf")
-
 FONT_NAME = "ArabicFont" if FONT_AVAILABLE else "Roboto"
 
+# --- كلاس فقاعة الدردشة ---
+class ChatBubble(BoxLayout):
+    def __init__(self, text, sender, **kwargs):
+        super().__init__(orientation='vertical', size_hint_y=None, padding=(10, 5), **kwargs)
+        
+        is_me = (sender == "أنا")
+        halign = 'right' if is_me else 'left'
+        # أخضر واتساب لرسائلي، أبيض للطرف الآخر
+        bg_color = (0.85, 0.96, 0.76, 1) if is_me else (1, 1, 1, 1)
+        self.pos_hint = {'right': 0.98} if is_me else {'left': 0.02}
+        self.size_hint_x = 0.75
 
+        lbl = Label(
+            text=fix_arabic(text),
+            font_name=FONT_NAME,
+            color=(0, 0, 0, 1),
+            size_hint_y=None,
+            halign=halign,
+            valign='middle',
+            markup=True
+        )
+        lbl.bind(width=lambda s, w: s.setter('text_size')(s, (w, None)))
+        lbl.bind(texture_size=lambda s, z: s.setter('height')(s, z[1]))
+        
+        with self.canvas.before:
+            Color(*bg_color)
+            self.rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[(15, 15), (15, 15), (15, 15), (15, 15)])
+        self.bind(pos=self.update_rect, size=self.update_rect)
+        
+        self.add_widget(lbl)
+        self.height = lbl.height + 30
+
+    def update_rect(self, *args):
+        self.rect.pos = self.pos
+        self.rect.size = self.size
+
+# --- التطبيق الرئيسي ---
 class ByWhatsApp(App):
-    title = "ByWhats"
-
     def build(self):
         self.conn = None
         self.server_socket = None
 
-        root = BoxLayout(orientation='vertical', padding=10, spacing=8)
+        main_layout = BoxLayout(orientation='vertical')
+        
+        # 1. الشريط العلوي (WhatsApp Header)
+        header = BoxLayout(size_hint_y=None, height=65, padding=10)
+        with header.canvas.before:
+            Color(0.03, 0.33, 0.27, 1) # أخضر واتساب غامق
+            self.header_rect = RoundedRectangle(pos=header.pos, size=header.size)
+        header.bind(pos=self.update_header, size=self.update_header)
+        
+        self.title_lbl = Label(text=fix_arabic("ByWhats - متصل"), font_name=FONT_NAME, bold=True, font_size=20)
+        header.add_widget(self.title_lbl)
+        main_layout.add_widget(header)
+
+        # 2. منطقة الرسائل (خلفية الدردشة)
+        chat_bg = BoxLayout(orientation='vertical', padding=10)
+        with chat_bg.canvas.before:
+            Color(0.9, 0.85, 0.8, 1) # لون خلفية محادثات واتساب
+            self.bg_rect = RoundedRectangle(pos=chat_bg.pos, size=chat_bg.size)
+        chat_bg.bind(pos=self.update_bg, size=self.update_bg)
+
+        self.scroll = ScrollView()
+        self.chat_list = BoxLayout(orientation='vertical', size_hint_y=None, spacing=12)
+        self.chat_list.bind(minimum_height=self.chat_list.setter('height'))
+        self.scroll.add_widget(self.chat_list)
+        chat_bg.add_widget(self.scroll)
+        main_layout.add_widget(chat_bg)
+
+        # 3. شريط الإدخال السفلي
+        input_area = BoxLayout(size_hint_y=None, height=70, padding=8, spacing=8)
+        with input_area.canvas.before:
+            Color(0.95, 0.95, 0.95, 1)
+            self.in_rect = RoundedRectangle(pos=input_area.pos, size=input_area.size)
+        input_area.bind(pos=self.update_in, size=self.update_in)
+
+        self.input_field = TextInput(
+            hint_text=fix_arabic("اكتب رسالة..."),
+            multiline=False,
+            font_name=FONT_NAME,
+            size_hint_x=0.75,
+            padding=[15, 15],
+            background_normal='',
+            background_color=(1, 1, 1, 1)
+        )
+        
+        send_btn = Button(
+            text=fix_arabic("إرسال"),
+            font_name=FONT_NAME,
+            size_hint_x=0.25,
+            background_normal='',
+            background_color=(0.03, 0.33, 0.27, 1),
+            color=(1, 1, 1, 1),
+            bold=True
+        )
+        send_btn.bind(on_release=self.send_message)
+        
+        input_area.add_widget(self.input_field)
+        input_area.add_widget(send_btn)
+        main_layout.add_widget(input_area)
+
+        # تشغيل السيرفر في الخلفية
+        threading.Thread(target=self.start_server, daemon=True).start()
+        
+        return main_layout
+
+    def update_header(self, instance, value): self.header_rect.pos = instance.pos; self.header_rect.size = instance.size
+    def update_bg(self, instance, value): self.bg_rect.pos = instance.pos; self.bg_rect.size = instance.size
+    def update_in(self, instance, value): self.in_rect.pos = instance.pos; self.in_rect.size = instance.size
+
+    def update_log(self, sender, message):
+        bubble = ChatBubble(text=message, sender=sender)
+        self.chat_list.add_widget(bubble)
+        Clock.schedule_once(lambda dt: setattr(self.scroll, 'scroll_y', 0))
+
+    def start_server(self):
+        try:
+            self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.server_socket.bind(('0.0.0.0', 12345))
+            self.server_socket.listen(5)
+            while True:
+                conn, addr = self.server_socket.accept()
+                self.conn = conn
+                threading.Thread(target=self.receive_messages, args=(conn,), daemon=True).start()
+        except: pass
+
+    def receive_messages(self, conn):
+        while True:
+            try:
+                data = conn.recv(1024).decode('utf-8')
+                if data:
+                    Clock.schedule_once(lambda dt: self.update_log("الطرف الآخر", data))
+            except: break
+
+    def send_message(self, *args):
+        msg = self.input_field.text.strip()
+        if msg:
+            if self.conn:
+                try:
+                    self.conn.send(msg.encode('utf-8'))
+                    self.update_log("أنا", msg)
+                    self.input_field.text = ""
+                except: self.update_log("نظام", "فشل الإرسال")
+            else:
+                # محاولة الاتصال كـ كليينت إذا لم نكن سيرفر
+                threading.Thread(target=self.connect_to_peer, args=(msg,), daemon=True).start()
+
+    def connect_to_peer(self, msg):
+        # محاولة الاتصال بالآي بي الافتراضي للهوتسبوت
+        try:
+            client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_sock.connect(('192.168.43.1', 12345))
+            self.conn = client_sock
+            self.conn.send(msg.encode('utf-8'))
+            Clock.schedule_once(lambda dt: self.update_log("أنا", msg))
+            Clock.schedule_once(lambda dt: setattr(self.input_field, 'text', ''))
+            threading.Thread(target=self.receive_messages, args=(self.conn,), daemon=True).start()
+        except:
+            Clock.schedule_once(lambda dt: self.update_log("نظام", "لا يوجد طرف آخر متصل بالشبكة"))
+
+if __name__ == '__main__':
+    ByWhatsApp().run()
 
         self.ip_info = Label(
             text=fix_arabic("جاري فحص الشبكة..."),
