@@ -3,7 +3,7 @@ on: [push]
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest  # هذا سيجعل GitHub يجد سيرفر فوراً
     steps:
       - uses: actions/checkout@v4
 
@@ -17,13 +17,12 @@ jobs:
       - name: Install Buildozer and Cython
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install --user --upgrade "buildozer==1.5.0" "cython<3.0"
+          # إجبار النظام على استخدام نسخة Cython المتوافقة لتجنب الخطأ السابق
+          python3 -m pip install --user --upgrade buildozer "cython<3.0" --break-system-packages || python3 -m pip install --user --upgrade buildozer "cython<3.0"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Build APK with Buildozer
         run: |
-          # حذف أي بناء سابق معلق لضمان بداية نظيفة
-          rm -rf .buildozer
           yes | buildozer android debug
         env:
           USER: root
@@ -31,5 +30,5 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: My-Final-WhatsApp-App
+          name: ByWhats-WhatsApp-Style
           path: bin/*.apk
