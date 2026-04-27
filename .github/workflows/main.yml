@@ -3,7 +3,7 @@ on: [push]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
 
@@ -12,17 +12,18 @@ jobs:
           sudo apt update
           sudo apt install -y python3-pip build-essential git python3-setuptools \
           libffi-dev libssl-dev libltdl-dev zlib1g-dev openjdk-17-jdk \
-          autoconf automake libtool pkg-config cmake
+          autoconf automake libtool pkg-config cmake zip unzip
 
       - name: Install Buildozer and Cython
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install --user --upgrade buildozer cython==0.29.33 --break-system-packages || python3 -m pip install --user --upgrade buildozer cython==0.29.33
+          python3 -m pip install --user --upgrade "buildozer==1.5.0" "cython<3.0"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Build APK with Buildozer
         run: |
-          # هذا السطر السحري يوافق على كل رخص أندرويد تلقائياً
+          # حذف أي بناء سابق معلق لضمان بداية نظيفة
+          rm -rf .buildozer
           yes | buildozer android debug
         env:
           USER: root
@@ -30,5 +31,5 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: my-app-apk
+          name: My-Final-WhatsApp-App
           path: bin/*.apk
