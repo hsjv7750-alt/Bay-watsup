@@ -31,5 +31,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ByWhats-WhatsApp-Style
+          name: ByWhats-Final-App
           path: bin/*.apk
